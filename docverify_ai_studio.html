@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100 dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DocVerify AI - Local Document Verification & Fraud Detection</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbar styling for terminal and document panels */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(51, 65, 85, 0.8);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(71, 85, 105, 1);
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col font-sans antialiased bg-slate-950 text-slate-100 overflow-hidden">
+
+  <!-- Top Navigation & System Status Bar -->
+  <header class="bg-slate-900/90 border-b border-slate-800/80 px-4 py-2.5 flex-shrink-0 backdrop-blur-md">
+    <div class="max-w-[1700px] mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
+      
+      <!-- Brand & Title -->
+      <div class="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-start">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="font-bold text-base tracking-tight text-white">DocVerify AI</span>
+              <span class="px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                Local Privacy Mode
+              </span>
+            </div>
+            <p class="text-xs text-slate-400 hidden sm:block">Open-Source Document Verification & Forensic Fraud Detection Engine</p>
+          </div>
+        </div>
+
+        <div class="flex md:hidden items-center space-x-2">
+          <span class="inline-flex items-center px-2 py-1 rounded-md text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5"></span>
+            Ollama Active
+          </span>
+        </div>
+      </div>
+
+      <!-- Controls & Engine Indicator -->
+      <div class="flex items-center space-x-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 text-xs">
+        
+        <!-- Local Inference Provider -->
+        <div class="flex items-center space-x-2 bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-1.5 shrink-0">
+          <i data-lucide="cpu" class="w-4 h-4 text-slate-400"></i>
+          <span class="text-slate-400">Inference Host:</span>
+          <select id="inferenceHost" class="bg-transparent font-medium text-slate-200 focus:outline-none cursor-pointer">
+            <option value="ollama" class="bg-slate-900">Ollama (127.0.0.1:11434)</option>
+            <option value="lmstudio" class="bg-slate-900">LM Studio (127.0.0.1:1234)</option>
+            <option value="vllm" class="bg-slate-900">vLLM Server (Local GPU)</option>
+          </select>
+        </div>
+
+        <!-- Open-Weight Model Selector -->
+        <div class="flex items-center space-x-2 bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-1.5 shrink-0">
+          <i data-lucide="sparkles" class="w-4 h-4 text-indigo-400"></i>
+          <span class="text-slate-400">Local Model:</span>
+          <select id="modelSelect" class="bg-transparent font-medium text-indigo-300 focus:outline-none cursor-pointer">
+            <option value="gemma2-9b" class="bg-slate-900">Gemma 2 (9B Instruct)</option>
+            <option value="llama3-8b" class="bg-slate-900">Llama 3.1 (8B Vision/Instruct)</option>
+            <option value="qwen25-14b" class="bg-slate-900">Qwen 2.5 (14B Document Special)</option>
+          </select>
+        </div>
+
+        <!-- Framework Badge -->
+        <div class="hidden lg:flex items-center space-x-2 bg-indigo-950/30 border border-indigo-800/40 rounded-lg px-3 py-1.5 text-indigo-300 shrink-0">
+          <i data-lucide="workflow" class="w-4 h-4 text-indigo-400"></i>
+          <span>Agent Harness: <strong class="text-white font-mono">CrewAI + LangChain</strong></span>
+        </div>
+
+        <!-- Status Light -->
+        <div class="hidden md:flex items-center space-x-2 bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-1.5 shrink-0">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-slate-300 font-mono text-[11px]">100% Offline / Privacy Guard On</span>
+        </div>
+
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Multi-Column Workspace Layout -->
+  <main class="flex-1 max-w-[1700px] w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 overflow-hidden">
+
+    <!-- LEFT COLUMN: Document Dropzone, Batch Loader & Preset Selector (3 cols) -->
+    <section class="lg:col-span-3 flex flex-col space-y-4 h-full overflow-y-auto pr-1">
+      
+      <!-- Dropzone Card -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col space-y-3 shrink-0 shadow-lg">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+            <i data-lucide="file-up" class="w-4 h-4 text-indigo-400"></i>
+            Document Dropzone
+          </h2>
+          <span class="text-[11px] text-slate-400 font-mono">PDF, PNG, JPG</span>
+        </div>
+
+        <!-- Interactive Drag & Drop Area -->
+        <div id="dropzone" class="border-2 border-dashed border-slate-700/80 hover:border-indigo-500/80 rounded-xl p-5 text-center bg-slate-950/40 transition-all cursor-pointer group flex flex-col items-center justify-center space-y-2">
+          <div class="w-10 h-10 rounded-full bg-slate-800/80 group-hover:bg-indigo-600/20 group-hover:text-indigo-400 flex items-center justify-center text-slate-400 transition-colors">
+            <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <p class="text-xs font-medium text-slate-300 group-hover:text-indigo-300">Drag & drop document here</p>
+            <p class="text-[11px] text-slate-500 mt-0.5">Passports, IDs, Financial Statements, Contracts</p>
+          </div>
+          <button class="mt-1 px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-md transition-colors border border-slate-700">
+            Browse Local File
+          </button>
+          <input type="file" id="fileInput" class="hidden" accept=".pdf,.png,.jpg,.jpeg">
+        </div>
+
+        <!-- Quick Demo Documents Preset Loader -->
+        <div class="space-y-2 pt-1">
+          <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Quick Verification Presets</span>
+          
+          <div class="grid grid-cols-1 gap-2">
+            
+            <button onclick="loadPreset('passport')" class="preset-btn text-left p-2.5 rounded-lg border border-slate-800 bg-slate-950/60 hover:bg-slate-800/60 transition-all flex items-center justify-between group">
+              <div class="flex items-center space-x-2.5 min-w-0">
+                <div class="p-1.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 shrink-0">
+                  <i data-lucide="id-card" class="w-4 h-4"></i>
+                </div>
+                <div class="truncate">
+                  <p class="text-xs font-medium text-slate-200 group-hover:text-indigo-300 truncate">EU_Passport_Sample.pdf</p>
+                  <p class="text-[10px] text-slate-400">Identity Doc • High Integrity</p>
+                </div>
+              </div>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">Valid</span>
+            </button>
+
+            <button onclick="loadPreset('bank_tampered')" class="preset-btn text-left p-2.5 rounded-lg border border-slate-800 bg-slate-950/60 hover:bg-slate-800/60 transition-all flex items-center justify-between group">
+              <div class="flex items-center space-x-2.5 min-w-0">
+                <div class="p-1.5 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20 shrink-0">
+                  <i data-lucide="landmark" class="w-4 h-4"></i>
+                </div>
+                <div class="truncate">
+                  <p class="text-xs font-medium text-slate-200 group-hover:text-indigo-300 truncate">Q3_Bank_Statement.pdf</p>
+                  <p class="text-[10px] text-slate-400">Financial • Font & Font-size Altered</p>
+                </div>
+              </div>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 shrink-0">Altered</span>
+            </button>
+
+            <button onclick="loadPreset('contract')" class="preset-btn text-left p-2.5 rounded-lg border border-slate-800 bg-slate-950/60 hover:bg-slate-800/60 transition-all flex items-center justify-between group">
+              <div class="flex items-center space-x-2.5 min-w-0">
+                <div class="p-1.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+                  <i data-lucide="file-text" class="w-4 h-4"></i>
+                </div>
+                <div class="truncate">
+                  <p class="text-xs font-medium text-slate-200 group-hover:text-indigo-300 truncate">Vendor_Agreement_v2.pdf</p>
+                  <p class="text-[10px] text-slate-400">Contract • Missing Signatures</p>
+                </div>
+              </div>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">Warning</span>
+            </button>
+
+          </div>
+        </div>
+
+        <!-- Verification Trigger Button -->
+        <button id="runScanBtn" onclick="runDocumentVerification()" class="w-full mt-2 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs rounded-xl shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2 transition-all">
+          <i data-lucide="play-circle" class="w-4 h-4"></i>
+          <span>Run Local Multi-Agent Audit</span>
+        </button>
+      </div>
+
+      <!-- File Metadata & Local Store Status Card -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col space-y-3 flex-1 shadow-lg">
+        <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+          <i data-lucide="hard-drive" class="w-3.5 h-3.5 text-slate-400"></i>
+          Local Embedded Index (ChromaDB)
+        </h3>
+
+        <div class="bg-slate-950/70 rounded-xl p-3 border border-slate-800/80 space-y-2 text-xs">
+          <div class="flex justify-between items-center">
+            <span class="text-slate-400">Document Selected:</span>
+            <span id="metaDocName" class="font-mono text-indigo-300 font-semibold truncate max-w-[130px]">EU_Passport_Sample.pdf</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-slate-400">File Size / Format:</span>
+            <span id="metaDocSize" class="font-mono text-slate-300">2.4 MB (PDF/A)</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-slate-400">Embeddings Chunk Count:</span>
+            <span id="metaChunkCount" class="font-mono text-emerald-400 font-medium">18 Chunks</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-slate-400">Local Vector Index ID:</span>
+            <span class="font-mono text-slate-400 text-[10px]">idx_vec_88f921</span>
+          </div>
+        </div>
+
+        <!-- Local Privacy Note -->
+        <div class="p-3 bg-emerald-950/20 border border-emerald-800/30 rounded-xl flex items-start space-x-2.5 text-xs text-emerald-300 mt-auto">
+          <i data-lucide="lock" class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5"></i>
+          <p class="leading-relaxed text-[11px]">Zero network packets transmitted. OCR parsing and vector matching happen purely on CPU/GPU via Ollama bindings.</p>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- MIDDLE COLUMN: Automated Verification Checklist & Forensic Integrity (5 cols) -->
+    <section class="lg:col-span-5 flex flex-col space-y-4 h-full overflow-y-auto pr-1">
+      
+      <!-- Primary Authenticity & Forensic Overview Header -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div id="verifyingOverlay" class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-sm z-20 flex flex-col items-center justify-center space-y-3">
+          <div class="w-10 h-10 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+          <p class="text-xs font-mono text-indigo-300 animate-pulse">Running Multi-Agent Local Audit...</p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <span class="text-xs text-slate-400 uppercase tracking-widest font-mono">Verification Status</span>
+            <div class="flex items-center space-x-2.5 mt-1">
+              <h2 id="statusTitle" class="text-xl font-bold text-emerald-400 tracking-tight">Verified Authentic</h2>
+              <span id="statusBadge" class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                PASSED
+              </span>
+            </div>
+            <p id="statusDesc" class="text-xs text-slate-400 mt-1">All digital signatures, MRZ checksums, and metadata hashes passed verification.</p>
+          </div>
+
+          <!-- Overall Forensic Integrity Gauge -->
+          <div class="flex items-center space-x-3 bg-slate-950/70 p-3 rounded-xl border border-slate-800 shrink-0 justify-center">
+            <div class="relative w-12 h-12 flex items-center justify-center">
+              <svg class="w-12 h-12 transform -rotate-90">
+                <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="4" class="text-slate-800" fill="transparent" />
+                <circle id="scoreRing" cx="24" cy="24" r="20" stroke="currentColor" stroke-width="4" class="text-emerald-400 transition-all duration-700" stroke-dasharray="125.6" stroke-dashoffset="12.5" fill="transparent" />
+              </svg>
+              <span id="scoreText" class="absolute font-mono text-xs font-bold text-white">96%</span>
+            </div>
+            <div class="text-left">
+              <span class="text-[10px] text-slate-400 uppercase tracking-wide block">Integrity Score</span>
+              <span id="scoreLabel" class="text-xs font-semibold text-emerald-400">High Confidence</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OCR Extracted Key Entity Fields Studio -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-lg space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+          <h3 class="text-xs font-semibold text-slate-200 flex items-center gap-2">
+            <i data-lucide="scan-text" class="w-4 h-4 text-indigo-400"></i>
+            Extracted Key Entities (Local OCR Parsing)
+          </h3>
+          <span class="text-[10px] text-slate-400 font-mono">Precision: 99.2%</span>
+        </div>
+
+        <div id="entityFieldsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+          <!-- Dynamically populated fields -->
+          <div class="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
+            <span class="text-[10px] text-slate-400 block">Document ID / Number</span>
+            <div class="flex justify-between items-center mt-0.5">
+              <span class="font-mono text-slate-100 font-semibold">P-DE88921094</span>
+              <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-400"></i>
+            </div>
+          </div>
+
+          <div class="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
+            <span class="text-[10px] text-slate-400 block">Primary Subject / Holder</span>
+            <div class="flex justify-between items-center mt-0.5">
+              <span class="font-mono text-slate-100 font-semibold">HELENA WEISS</span>
+              <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-400"></i>
+            </div>
+          </div>
+
+          <div class="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
+            <span class="text-[10px] text-slate-400 block">Date of Expiry</span>
+            <div class="flex justify-between items-center mt-0.5">
+              <span class="font-mono text-slate-100 font-semibold">14 NOV 2029</span>
+              <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-400"></i>
+            </div>
+          </div>
+
+          <div class="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
+            <span class="text-[10px] text-slate-400 block">Issuing Authority / Country</span>
+            <div class="flex justify-between items-center mt-0.5">
+              <span class="font-mono text-slate-100 font-semibold">FEDERAL GERMANY (DEU)</span>
+              <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-400"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Forensic Checklist & Anomaly Inspection Panel -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-lg flex-1 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+          <h3 class="text-xs font-semibold text-slate-200 flex items-center gap-2">
+            <i data-lucide="search-check" class="w-4 h-4 text-indigo-400"></i>
+            Forensic Integrity & Anomaly Checklist
+          </h3>
+          <span class="text-[11px] text-slate-400">3 Checks Executed</span>
+        </div>
+
+        <div id="checklistContainer" class="space-y-2 text-xs">
+          <!-- Check Item 1 -->
+          <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80 flex items-start justify-between space-x-3">
+            <div class="flex items-start space-x-2.5">
+              <div class="p-1 rounded bg-emerald-500/10 text-emerald-400 mt-0.5">
+                <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <p class="font-medium text-slate-200">MRZ & Checksum Consistency</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">Machine Readable Zone lines 1 & 2 mathematically match extracted fields.</p>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+              PASSED
+            </span>
+          </div>
+
+          <!-- Check Item 2 -->
+          <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80 flex items-start justify-between space-x-3">
+            <div class="flex items-start space-x-2.5">
+              <div class="p-1 rounded bg-emerald-500/10 text-emerald-400 mt-0.5">
+                <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <p class="font-medium text-slate-200">Typography & Font Uniformity</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">No spliced text boxes, font glyph anomalies, or variable pixel density detected.</p>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+              PASSED
+            </span>
+          </div>
+
+          <!-- Check Item 3 -->
+          <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80 flex items-start justify-between space-x-3">
+            <div class="flex items-start space-x-2.5">
+              <div class="p-1 rounded bg-emerald-500/10 text-emerald-400 mt-0.5">
+                <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <p class="font-medium text-slate-200">Digital EXIF Metadata Validation</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">Original creation timestamp and PDF structure match native scanner profiles.</p>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+              PASSED
+            </span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT COLUMN: Multi-Agent Audit Console & Interactive RAG Chat (4 cols) -->
+    <section class="lg:col-span-4 flex flex-col space-y-4 h-full overflow-y-auto">
+      
+      <!-- Multi-Agent Terminal Console -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-lg flex flex-col h-[280px]">
+        <div class="flex items-center justify-between border-b border-slate-800/80 pb-2.5 shrink-0">
+          <div class="flex items-center space-x-2">
+            <div class="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></div>
+            <h3 class="text-xs font-semibold text-slate-200">Multi-Agent Verification Console</h3>
+          </div>
+          <span class="text-[10px] font-mono text-slate-400">CrewAI Logs</span>
+        </div>
+
+        <!-- Terminal Output Area -->
+        <div id="terminalConsole" class="mt-3 flex-1 bg-slate-950 rounded-xl p-3 font-mono text-[11px] overflow-y-auto space-y-2 border border-slate-800/80 text-slate-300">
+          <div class="text-slate-500">[System Initialized] Local LLM Worker ready.</div>
+          <div class="text-indigo-400">[Parser Agent] Ingesting document: EU_Passport_Sample.pdf...</div>
+          <div class="text-emerald-400">[OCR Engine] Extracted 4 structured fields with 0.99 confidence.</div>
+          <div class="text-amber-400">[Forensic Agent] Running pixel diff & font alignment metrics...</div>
+          <div class="text-indigo-300">[Cross-Check Agent] MRZ Checksum verified against ISO/IEC 7501-1 standard.</div>
+          <div class="text-emerald-400">[Final Audit] Document classification: AUTHENTIC (Score 96/100).</div>
+        </div>
+      </div>
+
+      <!-- Interactive Local RAG Inspection & Query Panel -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 shadow-lg flex-1 flex flex-col">
+        <div class="flex items-center justify-between border-b border-slate-800/80 pb-2.5 shrink-0">
+          <h3 class="text-xs font-semibold text-slate-200 flex items-center gap-2">
+            <i data-lucide="messages-square" class="w-4 h-4 text-indigo-400"></i>
+            Interactive RAG Document Inspection
+          </h3>
+          <span class="text-[10px] text-emerald-400 font-mono">Local Vector Search</span>
+        </div>
+
+        <!-- Suggested Quick Prompts -->
+        <div class="flex items-center space-x-2 py-2 overflow-x-auto shrink-0 text-[11px]">
+          <button onclick="sendQuickQuery('What is the expiration date and is it expired?')" class="px-2.5 py-1 bg-slate-950 hover:bg-slate-800 text-slate-300 rounded-lg border border-slate-800 shrink-0 transition-colors">
+            Expiry Status?
+          </button>
+          <button onclick="sendQuickQuery('Were any fonts or text alignment anomalies found?')" class="px-2.5 py-1 bg-slate-950 hover:bg-slate-800 text-slate-300 rounded-lg border border-slate-800 shrink-0 transition-colors">
+            Font Tampering?
+          </button>
+          <button onclick="sendQuickQuery('Give me a brief executive summary of this document.')" class="px-2.5 py-1 bg-slate-950 hover:bg-slate-800 text-slate-300 rounded-lg border border-slate-800 shrink-0 transition-colors">
+            Executive Summary
+          </button>
+        </div>
+
+        <!-- Chat Output -->
+        <div id="chatHistory" class="flex-1 bg-slate-950/60 rounded-xl p-3 overflow-y-auto space-y-3 text-xs border border-slate-800/60 my-2">
+          
+          <div class="flex items-start space-x-2">
+            <div class="w-5 h-5 rounded-md bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+              AI
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-slate-300 leading-relaxed max-w-[90%]">
+              Ask any question about the uploaded document. Answers are derived strictly from local vector chunks with exact citations.
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Chat Input Form -->
+        <form id="chatForm" onsubmit="handleChatSubmit(event)" class="relative shrink-0 mt-1">
+          <input id="chatInput" type="text" placeholder="Ask local LLM about document contents..." class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-3 pr-10 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors">
+          <button type="submit" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors">
+            <i data-lucide="send" class="w-3.5 h-3.5"></i>
+          </button>
+        </form>
+      </div>
+
+    </section>
+
+  </main>
+
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // Data Presets for Verification Demonstrations
+    const presets = {
+      passport: {
+        name: "EU_Passport_Sample.pdf",
+        size: "2.4 MB (PDF/A)",
+        chunks: "18 Chunks",
+        statusTitle: "Verified Authentic",
+        statusColor: "text-emerald-400",
+        badgeText: "PASSED",
+        badgeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+        desc: "All digital signatures, MRZ checksums, and metadata hashes passed verification.",
+        score: "96%",
+        scoreOffset: "12.5",
+        scoreColor: "text-emerald-400",
+        scoreLabel: "High Confidence",
+        entities: [
+          { label: "Document ID / Number", value: "P-DE88921094", status: "pass" },
+          { label: "Primary Subject / Holder", value: "HELENA WEISS", status: "pass" },
+          { label: "Date of Expiry", value: "14 NOV 2029", status: "pass" },
+          { label: "Issuing Authority / Country", value: "FEDERAL GERMANY (DEU)", status: "pass" }
+        ],
+        checks: [
+          { name: "MRZ & Checksum Consistency", desc: "Machine Readable Zone lines 1 & 2 mathematically match extracted fields.", status: "PASSED", color: "emerald" },
+          { name: "Typography & Font Uniformity", desc: "No spliced text boxes, font glyph anomalies, or variable pixel density detected.", status: "PASSED", color: "emerald" },
+          { name: "Digital EXIF Metadata Validation", desc: "Original creation timestamp and PDF structure match native scanner profiles.", status: "PASSED", color: "emerald" }
+        ],
+        logs: [
+          "[Parser Agent] Ingesting identity document: EU_Passport_Sample.pdf...",
+          "[OCR Engine] Extracted MRZ strings & 4 key entity fields.",
+          "[Forensic Agent] Running font alignment & pixel density verification...",
+          "[Cross-Check Agent] Checksums verified against standard ISO/IEC 7501-1.",
+          "[Final Audit] Status: AUTHENTIC (Score: 96/100)."
+        ]
+      },
+      bank_tampered: {
+        name: "Q3_Bank_Statement.pdf",
+        size: "1.1 MB (PDF)",
+        chunks: "12 Chunks",
+        statusTitle: "Tampering Detected",
+        statusColor: "text-rose-400",
+        badgeText: "HIGH RISK",
+        badgeClass: "bg-rose-500/20 text-rose-300 border-rose-500/30",
+        desc: "Font discrepancies and mismatched line heights detected in transaction entries.",
+        score: "38%",
+        scoreOffset: "80",
+        scoreColor: "text-rose-400",
+        scoreLabel: "Suspicious",
+        entities: [
+          { label: "Account Holder", value: "APEX GLOBAL LOGISTICS", status: "pass" },
+          { label: "Account Number", value: "4892-XXXX-1029", status: "pass" },
+          { label: "Ending Balance", value: "$482,900.00", status: "fail" },
+          { label: "Statement Period", value: "Q3 2025", status: "pass" }
+        ],
+        checks: [
+          { name: "Font Glyphs & Embedded Fonts", desc: "Mismatch detected: 'Helvetica-Bold' injected over standard 'Arial' font stream on line 42.", status: "ALERT", color: "rose" },
+          { name: "Ending Balance Calculation", desc: "Starting Balance + Total Credits - Total Debits does not equal $482,900.00.", status: "ALERT", color: "rose" },
+          { name: "PDF Modification History", desc: "PDF edited with Adobe Acrobat Pro post-creation timestamp.", status: "WARNING", color: "amber" }
+        ],
+        logs: [
+          "[Parser Agent] Parsing Q3_Bank_Statement.pdf...",
+          "[Forensic Agent] Alert: Detected mismatched font stream 'Helvetica-Bold' on page 1.",
+          "[Cross-Check Agent] Math check failed: Sum of debits/credits deviates by $42,000.00.",
+          "[Final Audit] Fraud risk flagged: FORGERY / TEXT SPLICING DETECTED."
+        ]
+      },
+      contract: {
+        name: "Vendor_Agreement_v2.pdf",
+        size: "3.8 MB (PDF/A)",
+        chunks: "34 Chunks",
+        statusTitle: "Review Required",
+        statusColor: "text-amber-400",
+        badgeText: "WARNING",
+        badgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/30",
+        desc: "Contract structure valid, but required authorization signature block is missing.",
+        score: "72%",
+        scoreOffset: "35",
+        scoreColor: "text-amber-400",
+        scoreLabel: "Incomplete",
+        entities: [
+          { label: "Contract Title", value: "MASTER SERVICES AGREEMENT", status: "pass" },
+          { label: "Contracting Party", value: "ACME SOLUTIONS CORP", status: "pass" },
+          { label: "Effective Date", value: "01 JAN 2026", status: "pass" },
+          { label: "Signature Status", value: "MISSING PARTY B SIGNATURE", status: "warn" }
+        ],
+        checks: [
+          { name: "Document Structure & Clauses", desc: "Standard agreement clauses, indemnity, and termination terms present.", status: "PASSED", color: "emerald" },
+          { name: "Signature Verification", desc: "Party A signature found; Party B (Vendor) signature field is blank.", status: "WARNING", color: "amber" },
+          { name: "Liability Cap Audit", desc: "Section 14.2 contains unlimited liability clause deviation.", status: "WARNING", color: "amber" }
+        ],
+        logs: [
+          "[Parser Agent] Ingesting contract Vendor_Agreement_v2.pdf...",
+          "[Legal Agent] Extracted 18 core clauses and indemnification terms.",
+          "[Cross-Check Agent] Warning: Signature box 2 on page 12 remains unfulfilled.",
+          "[Final Audit] Status: INCOMPLETE / REVIEW REQUIRED."
+        ]
+      }
+    };
+
+    let currentPreset = 'passport';
+
+    // Load Document Preset Function
+    function loadPreset(key) {
+      currentPreset = key;
+      const data = presets[key];
+
+      // Update Metadata
+      document.getElementById('metaDocName').textContent = data.name;
+      document.getElementById('metaDocSize').textContent = data.size;
+      document.getElementById('metaChunkCount').textContent = data.chunks;
+
+      // Update Header
+      document.getElementById('statusTitle').textContent = data.statusTitle;
+      document.getElementById('statusTitle').className = `text-xl font-bold tracking-tight ${data.statusColor}`;
+      document.getElementById('statusBadge').textContent = data.badgeText;
+      document.getElementById('statusBadge').className = `px-2.5 py-0.5 text-xs font-semibold rounded-full border ${data.badgeClass}`;
+      document.getElementById('statusDesc').textContent = data.desc;
+
+      // Update Score Gauge
+      document.getElementById('scoreText').textContent = data.score;
+      document.getElementById('scoreRing').setAttribute('stroke-dashoffset', data.scoreOffset);
+      document.getElementById('scoreRing').className = `transition-all duration-700 ${data.scoreColor}`;
+      document.getElementById('scoreLabel').textContent = data.scoreLabel;
+      document.getElementById('scoreLabel').className = `text-xs font-semibold ${data.scoreColor}`;
+
+      // Update Entity Fields
+      const entityContainer = document.getElementById('entityFieldsContainer');
+      entityContainer.innerHTML = '';
+      data.entities.forEach(item => {
+        let iconHtml = '<i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-400"></i>';
+        if (item.status === 'fail') iconHtml = '<i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-rose-400"></i>';
+        if (item.status === 'warn') iconHtml = '<i data-lucide="alert-circle" class="w-3.5 h-3.5 text-amber-400"></i>';
+
+        entityContainer.innerHTML += `
+          <div class="p-2.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
+            <span class="text-[10px] text-slate-400 block">${item.label}</span>
+            <div class="flex justify-between items-center mt-0.5">
+              <span class="font-mono text-slate-100 font-semibold truncate max-w-[150px]">${item.value}</span>
+              ${iconHtml}
+            </div>
+          </div>
+        `;
+      });
+
+      // Update Checks
+      const checkContainer = document.getElementById('checklistContainer');
+      checkContainer.innerHTML = '';
+      data.checks.forEach(check => {
+        let badgeColor = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+        let icon = 'check-circle-2';
+        let iconColor = 'text-emerald-400';
+
+        if (check.color === 'rose') {
+          badgeColor = 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+          icon = 'alert-triangle';
+          iconColor = 'text-rose-400';
+        } else if (check.color === 'amber') {
+          badgeColor = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+          icon = 'alert-circle';
+          iconColor = 'text-amber-400';
+        }
+
+        checkContainer.innerHTML += `
+          <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80 flex items-start justify-between space-x-3">
+            <div class="flex items-start space-x-2.5">
+              <div class="p-1 rounded bg-slate-900 ${iconColor} mt-0.5">
+                <i data-lucide="${icon}" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <p class="font-medium text-slate-200">${check.name}</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">${check.desc}</p>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-semibold border ${badgeColor} shrink-0">
+              ${check.status}
+            </span>
+          </div>
+        `;
+      });
+
+      // Update Terminal
+      const terminal = document.getElementById('terminalConsole');
+      terminal.innerHTML = `<div class="text-slate-500">[System] Loaded preset ${data.name}.</div>`;
+      data.logs.forEach(log => {
+        terminal.innerHTML += `<div class="text-slate-300">${log}</div>`;
+      });
+
+      lucide.createIcons();
+    }
+
+    // Run Simulated Verification Scan
+    function runDocumentVerification() {
+      const overlay = document.getElementById('verifyingOverlay');
+      overlay.classList.remove('hidden');
+
+      setTimeout(() => {
+        overlay.classList.add('hidden');
+        loadPreset(currentPreset);
+      }, 1000);
+    }
+
+    // Chat / RAG Query Handler
+    function handleChatSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById('chatInput');
+      const query = input.value.trim();
+      if (!query) return;
+
+      appendChatMessage('User', query, 'user');
+      input.value = '';
+
+      // Simulated local RAG response generator
+      setTimeout(() => {
+        let answer = "The document was verified locally. All extracted entities match vector references.";
+        if (query.toLowerCase().includes('expiry') || query.toLowerCase().includes('expired')) {
+          answer = currentPreset === 'passport' 
+            ? "According to Chunk #3 (Page 1), the document expiration date is **14 NOV 2029**. The passport is active and valid for international travel."
+            : "Expiration dates were checked. Refer to the key entity panel for specific field values.";
+        } else if (query.toLowerCase().includes('font') || query.toLowerCase().includes('tamper')) {
+          answer = currentPreset === 'bank_tampered'
+            ? "ALERT: The Local Forensic Agent detected font stream tampering on Page 1. Text 'Helvetica-Bold' was spliced over line 42 with unnatural kerning."
+            : "No font tampering or line-height anomalies were detected in the pixel density scan.";
+        } else if (query.toLowerCase().includes('summary')) {
+          answer = `Executive Summary for **${presets[currentPreset].name}**: Classification completed with score **${presets[currentPreset].score}**. Status: ${presets[currentPreset].statusTitle}.`;
+        }
+
+        appendChatMessage('DocVerify AI', answer, 'ai');
+      }, 600);
+    }
+
+    function sendQuickQuery(text) {
+      document.getElementById('chatInput').value = text;
+      handleChatSubmit(new Event('submit'));
+    }
+
+    function appendChatMessage(sender, text, type) {
+      const chatHistory = document.getElementById('chatHistory');
+      const isUser = type === 'user';
+
+      const msgHtml = isUser ? `
+        <div class="flex items-start justify-end space-x-2">
+          <div class="bg-indigo-600/30 border border-indigo-500/30 rounded-xl p-2.5 text-indigo-100 leading-relaxed max-w-[85%]">
+            ${text}
+          </div>
+          <div class="w-5 h-5 rounded-md bg-indigo-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+            YOU
+          </div>
+        </div>
+      ` : `
+        <div class="flex items-start space-x-2">
+          <div class="w-5 h-5 rounded-md bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+            AI
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-slate-300 leading-relaxed max-w-[90%]">
+            ${text}
+            <div class="mt-1.5 pt-1 border-t border-slate-800 text-[10px] text-slate-500 font-mono flex items-center justify-between">
+              <span>Source: Vector Index idx_vec_88f921</span>
+              <span>Confidence: 98.4%</span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      chatHistory.innerHTML += msgHtml;
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    // Drag and Drop simulation
+    const dropzone = document.getElementById('dropzone');
+    dropzone.addEventListener('click', () => document.getElementById('fileInput').click());
+
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('border-indigo-500', 'bg-indigo-950/20');
+    });
+
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('border-indigo-500', 'bg-indigo-950/20');
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('border-indigo-500', 'bg-indigo-950/20');
+      if (e.dataTransfer.files.length > 0) {
+        runDocumentVerification();
+      }
+    });
+
+    document.getElementById('fileInput').addEventListener('change', () => {
+      runDocumentVerification();
+    });
+  </script>
+</body>
+</html>
